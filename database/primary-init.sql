@@ -1,0 +1,2 @@
+CREATE USER replicator WITH REPLICATION ENCRYPTED PASSWORD 'replicator';
+GRANT CONNECT ON DATABASE ecommerce TO replicator;
