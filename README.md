@@ -1,90 +1,199 @@
-# E-Commerce Microservices — Steps 1-8
+# E-Commerce Microservices Project
 
-## What's included
+A full-stack **e-commerce application built using a microservices architecture**.
+The project is being developed incrementally to gain practical experience with distributed systems, backend services, databases, caching, messaging, and containerization.
 
-```
+## Tech Stack
+
+* **Frontend:** React + Vite
+* **Backend:** Node.js + Express
+* **Database:** PostgreSQL
+* **Caching / Fast Data Store:** Redis
+* **Messaging:** Apache Kafka
+* **Reverse Proxy:** NGINX
+* **Containerization:** Docker + Docker Compose
+* **Authentication:** JWT
+
+## Services
+
+### Auth Service
+
+Responsible for:
+
+* User registration
+* User login
+* Authentication
+* JWT-based access control
+
+### Product Service
+
+Responsible for:
+
+* Product management
+* Creating products
+* Updating products
+* Deleting products
+* Retrieving product information
+
+### Cart Service
+
+Responsible for:
+
+* Managing shopping carts
+* Adding and removing products
+* Maintaining cart state
+
+Redis is used for fast cart data access.
+
+### Inventory Service
+
+Responsible for:
+
+* Product stock management
+* Inventory updates
+* Stock availability
+
+### Checkout Service
+
+Responsible for:
+
+* Checkout processing
+* Order creation
+* Checkout-related service communication
+
+## Infrastructure
+
+### PostgreSQL
+
+PostgreSQL is used as the primary persistent database for application data.
+
+The project also uses a **primary-replica database setup** to explore database replication and read scalability.
+
+### Redis
+
+Redis provides fast-access storage for shopping cart data.
+
+### Apache Kafka
+
+Kafka is used for **asynchronous communication between services**.
+
+This allows services to exchange events without requiring every interaction to happen through direct synchronous requests.
+
+### NGINX
+
+NGINX acts as the **entry point for the application** and routes incoming requests to the appropriate backend service.
+
+### Docker
+
+Each major component runs in a containerized environment.
+
+Docker Compose is used to manage the complete application stack locally.
+
+## Key Features
+
+* Microservices-based backend architecture
+* React-based frontend
+* REST APIs
+* JWT authentication
+* Product management
+* Shopping cart
+* Inventory management
+* Checkout and order processing
+* Redis-based cart storage
+* Kafka-based asynchronous communication
+* PostgreSQL persistent storage
+* PostgreSQL primary-replica setup
+* NGINX reverse proxy
+* Dockerized development environment
+* Docker Compose orchestration
+
+## Project Structure
+
+```text
 ecommerce-app/
-├── docker-compose.yml       # orchestrates every container
+│
+├── frontend/
+│
+├── services/
+│   ├── auth-service/
+│   ├── product-service/
+│   ├── cart-service/
+│   ├── inventory-service/
+│   └── checkout-service/
+│
+├── database/
 ├── nginx/
-│   └── nginx.conf           # single entry point, routes /api/* to services
-├── frontend/                # React + Vite
-└── services/
-    ├── auth-service/        # :5000, PostgreSQL-backed JWT auth
-    ├── product-service/     # :5001, CRUD + Kafka events
-    ├── cart-service/        # :5002
-    ├── inventory-service/   # :5003
-    └── checkout-service/    # :5004, PostgreSQL orders + Kafka events
+├── docker-compose.yml
+├── README.md
+└── TillNow.md
 ```
 
-Each service is an independent Express app with:
-- `package.json` — its own dependencies (microservices don't share a node_modules)
-- `src/index.js` — service routes and a `/health` endpoint
-- `Dockerfile` — builds and runs the service in its own container
+## Running the Project
 
-The database layer includes a PostgreSQL primary on `:5432` for writes and a
-streaming replica on `:5433` for product reads. Kafka runs in single-node KRaft
-mode for the `product-created`, `payment-events`, and `clear-cart` topics. Redis
-stores carts with a 24-hour TTL.
+### Prerequisites
 
-## Why this structure
+Make sure the following are installed:
 
-- **One repo, many services (monorepo)**: easier to manage at this stage than juggling 6 separate repos. You can split later if teams/deploys need it.
-- **Nginx as single entry point**: the browser only ever talks to `localhost:8080`. Nginx decides which service handles `/api/product`, `/api/cart`, etc. This avoids CORS issues and hides internal service topology from the client.
-- **Docker Compose networking**: services refer to each other by name (`http://product-service:5001`) — Compose provides internal DNS, no hardcoded IPs.
-- **Volumes mounted for dev**: your local code changes reflect live in the container (via nodemon), without rebuilding the image every time.
+* Docker
+* Docker Compose
+* Git
 
-## How to run
+### Clone the Repository
 
 ```bash
-cd ecommerce-app
+git clone https://github.com/Dhruv0Bansal/e-commerce.git
+cd e-commerce
+```
+
+### Start the Application
+
+```bash
 docker-compose up --build
 ```
 
-Then visit:
-- Frontend: http://localhost:5173 (direct) or http://localhost:8080 (through Nginx)
-- Any service health check: http://localhost:5000/health, :5001/health, etc.
+Once the containers are running, the application can be accessed through the configured frontend and gateway ports.
 
-Register or log in through `/api/user/register` and `/api/user/login` to get a
-JWT. Product listing reads from the replica; product creation, updates, and
-deletes require `Authorization: Bearer <token>` and write to the primary.
-Creation also publishes a `PRODUCT_CREATED` message to the `product-created` Kafka topic.
+## Development Approach
 
-Inventory consumes product-created events to seed zero-quantity records and
-payment-events timeout/failure events to release reserved stock. Inventory
-listing reads from the replica; stock adjustments and reservations write to the
-primary.
+The project is being developed incrementally.
 
-Inventory endpoints:
+The current implementation focuses on establishing the core e-commerce functionality and the underlying microservices infrastructure. Additional features and improvements will be added as development continues.
 
-```text
-GET  /api/inventory
-GET  /api/inventory/:productId
-POST /api/inventory/:productId/adjust
-POST /api/inventory/:productId/reserve
-```
+The architecture is designed to allow individual services to evolve independently without requiring the entire application to be redesigned.
 
-The adjustment and reservation endpoints require a JWT. A payment timeout is
-published to `payment-events` with `type: PAYMENT_TIMEOUT`, `productId`, and
-`quantity`; the inventory consumer releases the reservation.
+## What This Project Demonstrates
 
-Checkout endpoints:
+This project provides practical experience with:
 
-```text
-GET  /api/checkout
-POST /api/checkout
-```
+* Microservices architecture
+* Service separation
+* REST API development
+* Authentication and authorization
+* Database management
+* Database replication
+* Caching and fast data access
+* Asynchronous messaging
+* Reverse proxies
+* Containerization
+* Multi-service application orchestration
+* Distributed application design
 
-Checkout requires a JWT and an `items` array. It records a paid order in the
-primary database, publishes `PAYMENT_COMPLETED`, and publishes `CLEAR_CART` so
-the cart service removes the user's cart.
+## Future Improvements
 
-## What's NOT in this step yet
-- Payment provider integration is simulated; use a real provider before production.
-- Checkout does not yet reserve inventory transactionally before payment.
+Planned improvements may include additional e-commerce functionality, stronger reliability mechanisms, improved observability, testing, performance improvements, and further infrastructure enhancements.
 
-## Database notes
+## Project Status
 
-The replica is bootstrapped with `pg_basebackup` from the primary on its first
-start. If you change the replication bootstrap settings during development,
-remove the `postgres_primary_data` and `postgres_replica_data` volumes before
-starting again so PostgreSQL runs its initialization scripts.
+**Work in Progress 🚧**
+
+The core architecture and major e-commerce services are currently implemented, with additional features planned for future development.
+
+## Purpose
+
+This project is primarily a learning and portfolio project focused on understanding how a real-world application can be designed using **microservices and distributed system concepts**.
+
+It is being built incrementally to explore different technologies and architectural patterns in a practical environment.
+
+## License
+
+This project is for educational and portfolio purposes.
